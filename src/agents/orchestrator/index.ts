@@ -12,7 +12,6 @@ import { logStep } from "@/db/queries/runs";
 import { buildBrandCard, getCompanyContext } from "@/memory/context";
 import type { Critique, Draft, Plan, Strategy } from "@/shared/types";
 import { critique, MAX_REVISION_ROUNDS, PASS_THRESHOLD } from "../critic";
-import { composePost } from "../platforms";
 import { draftAll, reviseDrafts } from "../platforms/draft";
 import { strategy as buildStrategy } from "../strategy";
 import { plan as buildPlan } from "./plan";
@@ -83,7 +82,8 @@ export async function runCampaign(
         campaign_id: campaignId,
         platform: draft.platform,
         version: 1,
-        body: composePost(draft),
+        body: draft.body,
+        hashtags: draft.hashtags,
       })),
     );
 
@@ -125,7 +125,8 @@ export async function runCampaign(
           campaign_id: campaignId,
           platform: draft.platform,
           version: (slots.get(draft.platform)?.version ?? 1) + 1,
-          body: composePost(draft),
+          body: draft.body,
+          hashtags: draft.hashtags,
         })),
       );
 

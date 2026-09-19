@@ -33,8 +33,8 @@ function normalizeTag(tag: string): string {
 }
 
 /**
- * The exact text that would be posted: body plus hashtags. This is what
- * gets stored on the draft row and what the character gate measures.
+ * The exact text that would be posted: body plus hashtags. The DB stores
+ * them separately; compose at validate/publish time.
  */
 export function composePost(draft: Draft): string {
   const tags = draft.hashtags.map(normalizeTag).filter(Boolean);

@@ -1,7 +1,17 @@
-import { pgTable, text, integer, real, jsonb, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  integer,
+  real,
+  jsonb,
+  timestamp,
+  index,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import type {
   CampaignStatus,
-  Critique,
+  CriticNotes,
+  CritiqueScores,
   DraftStatus,
   Plan,
 } from "@/shared/types";
@@ -64,7 +74,8 @@ export const brandProfile = pgTable("brand_profile", {
 export const campaigns = pgTable("campaigns", {
   id: id(),
   brief: text("brief").notNull(),
-  goal: jsonb("goal").$type<Plan | null>(),
+  /** Denormalized plan.goal for display/filter; full plan is in `plan`. */
+  goal: text("goal"),
   plan: jsonb("plan").$type<Plan | null>(),
   status: text("status", { enum: CAMPAIGN_STATUSES })
     .notNull()
@@ -77,42 +88,62 @@ export const campaigns = pgTable("campaigns", {
 // drafts — one row per platform per revision round
 // ---------------------------------------------------------------------------
 
-export const drafts = pgTable("drafts", {
-  id: id(),
-  campaign_id: text("campaign_id")
-    .notNull()
-    .references(() => campaigns.id),
-  platform: text("platform").notNull(),
-  version: integer("version").notNull().default(1),
-  body: text("body").notNull(),
-  image_url: text("image_url"),
-  score: real("score"),
-  scores: jsonb("scores").$type<Critique["scores"] | null>(),
-  critic_notes: jsonb("critic_notes").$type<string[] | null>(),
-  status: text("status", { enum: DRAFT_STATUSES })
-    .notNull()
-    .$type<DraftStatus>()
-    .default("draft"),
-  scheduled_at: timestamp("scheduled_at", {
-    withTimezone: true,
-    mode: "string",
-  }),
-  published_url: text("published_url"),
-  created_at: createdAt(),
-});
+export const drafts = pgTable(
+  "drafts",
+  {
+    id: id(),
+    campaign_id: text("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    platform: text("platform").notNull(),
+    version: integer("version").notNull().default(1),
+    /** Post text without hashtags. Publish path composes with `hashtags`. */
+    body: text("body").notNull(),
+    hashtags: jsonb("hashtags").notNull().$type<string[]>().default([]),
+    image_url: text("image_url"),
+    score: real("score"),
+    scores: jsonb("scores").$type<CritiqueScores | null>(),
+    critic_notes: jsonb("critic_notes").$type<CriticNotes | null>(),
+    status: text("status", { enum: DRAFT_STATUSES })
+      .notNull()
+      .$type<DraftStatus>()
+      .default("draft"),
+    /** Approver note when rejecting; fed into the next revision. */
+    review_note: text("review_note"),
+    scheduled_at: timestamp("scheduled_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    published_url: text("published_url"),
+    created_at: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("drafts_campaign_platform_version_uidx").on(
+      t.campaign_id,
+      t.platform,
+      t.version,
+    ),
+  ],
+);
 
 // ---------------------------------------------------------------------------
 // run_steps — an append-only log of every orchestrator/agent step
 // ---------------------------------------------------------------------------
 
-export const runSteps = pgTable("run_steps", {
-  id: id(),
-  campaign_id: text("campaign_id")
-    .notNull()
-    .references(() => campaigns.id),
-  step: text("step").notNull(),
-  model: text("model").notNull(),
-  output: jsonb("output").notNull().$type<unknown>(),
-  duration_ms: integer("duration_ms").notNull().default(0),
-  created_at: createdAt(),
-});
+export const runSteps = pgTable(
+  "run_steps",
+  {
+    id: id(),
+    campaign_id: text("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    step: text("step").notNull(),
+    model: text("model").notNull(),
+    output: jsonb("output").notNull().$type<unknown>(),
+    duration_ms: integer("duration_ms").notNull().default(0),
+    created_at: createdAt(),
+  },
+  (t) => [
+    index("run_steps_campaign_created_idx").on(t.campaign_id, t.created_at),
+  ],
+);

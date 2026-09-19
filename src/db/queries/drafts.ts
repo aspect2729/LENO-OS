@@ -14,6 +14,7 @@ export type NewDraft = {
   platform: PlatformId;
   version: number;
   body: string;
+  hashtags: string[];
 };
 
 export async function insertDrafts(rows: NewDraft[]): Promise<DraftRow[]> {
@@ -32,7 +33,11 @@ export async function updateDraftCritique(
     .set({
       score: critique.weighted,
       scores: critique.scores,
-      critic_notes: [...critique.gate_failures, ...critique.fix_list],
+      critic_notes: {
+        fix_list: critique.fix_list,
+        gate_failures: critique.gate_failures,
+        rationale: critique.rationale,
+      },
       status,
     })
     .where(eq(drafts.id, id));
@@ -65,4 +70,3 @@ export async function getLatestDraftsByPlatform(
     .where(eq(drafts.campaign_id, campaignId))
     .orderBy(drafts.platform, desc(drafts.version));
 }
-

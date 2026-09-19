@@ -30,10 +30,12 @@ export async function updateCampaignStatus(
 }
 
 /**
- * The planner produces one Plan; `goal` keeps the goal statement the run
- * was steered by and `plan` the whole thing, so a later edit to the plan
- * doesn't erase what the campaign originally set out to do.
+ * The planner produces one Plan. `goal` stores the goal statement for
+ * display/filter; `plan` stores the full object.
  */
 export async function saveCampaignPlan(id: string, plan: Plan): Promise<void> {
-  await db.update(campaigns).set({ goal: plan, plan }).where(eq(campaigns.id, id));
+  await db
+    .update(campaigns)
+    .set({ goal: plan.goal, plan })
+    .where(eq(campaigns.id, id));
 }

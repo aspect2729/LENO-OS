@@ -8,6 +8,7 @@ import type {
   BrandProfileSchema,
   CampaignBriefSchema,
   CampaignStatusSchema,
+  CriticNotesSchema,
   CritiqueLLMSchema,
   CritiqueLLMSetSchema,
   CritiqueSchema,
@@ -40,3 +41,4 @@ export type CritiqueScores = z.infer<typeof CritiqueScoresSchema>;
 export type CritiqueLLM = z.infer<typeof CritiqueLLMSchema>;
 export type CritiqueLLMSet = z.infer<typeof CritiqueLLMSetSchema>;
 export type Critique = z.infer<typeof CritiqueSchema>;
+export type CriticNotes = z.infer<typeof CriticNotesSchema>;

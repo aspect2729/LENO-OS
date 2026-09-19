@@ -87,33 +87,37 @@ only for a draft with `status = 'approved'`.
 - `src/workflows/campaign-run.ts` — starts a campaign run in the background
   via `after()`
 - `src/db/` — Drizzle schema (`brand_profile`, `campaigns`, `drafts`,
-  `run_steps`) on PostgreSQL 17, client, and seed script
+  `run_steps`) on Supabase Postgres, client, and seed script. Locked
+  design: `docs/DATABASE.md`.
 - `src/shared/schemas.ts` / `src/shared/types.ts` — every zod schema in the
   app, and the types inferred from them
-- `Dockerfile`, `docker-compose.yml`, `docker-compose.dev.yml` — the
-  container image and the local/production Compose stacks
+- `Dockerfile`, `docker-compose.yml` — the container image and the
+  production Compose stack (migrate + app; DB is Supabase)
 
 ## Local setup
 
+Create a Supabase project and copy its Database connection URI into
+`.env` as `DATABASE_URL` (Session/Direct for migrations; Transaction
+pooler is fine for the Next.js app).
+
 ```bash
-npm run db:up       # Postgres 17 in Docker (docker-compose.dev.yml)
-npm run db:migrate  # apply drizzle/ migrations
+npm run db:migrate  # apply drizzle/ migrations to Supabase
 npm run db:seed     # insert the demo brand profile
 npm run dev
 ```
 
 ## Deploy to EC2
 
-The production stack is three Docker Compose services on one AWS EC2
-instance (ARM, `t4g.small`): `db` (Postgres 17, no published port), `migrate`
-(a one-shot job that runs `drizzle-kit migrate` and exits), and `app` (the
-Next.js standalone server), wired so `app` only starts once `migrate` has
-completed successfully.
+The production stack is two Docker Compose services on one AWS EC2
+instance (ARM, `t4g.small`): `migrate` (a one-shot job that runs
+`drizzle-kit migrate` against Supabase and exits), and `app` (the Next.js
+standalone server), wired so `app` only starts once `migrate` has
+completed successfully. Postgres lives in Supabase — nothing listens on
+5432 on the EC2 host.
 
 1. Launch a `t4g.small` instance (Amazon Linux or Ubuntu ARM64). In its
    security group, allow port 22 from your IP only, and ports 80/443 from
-   anywhere. **Never open 5432** — Postgres has no published port in
-   `docker-compose.yml`; only containers on the compose network can reach it.
+   anywhere.
 2. Install Docker and the Compose plugin, and add swap (the instance only
    has 2 GB RAM):
    ```bash
@@ -123,8 +127,8 @@ completed successfully.
    sudo mkswap /swapfile && sudo swapon /swapfile
    echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
    ```
-3. Clone the repo and create `.env` from `.env.example`, setting a real
-   `DB_PASSWORD` and the model/API keys.
+3. Clone the repo and create `.env` from `.env.example`, setting
+   `DATABASE_URL` to your Supabase URI and the model/API keys.
 4. Start the stack:
    ```bash
    docker compose up -d --build
@@ -132,5 +136,6 @@ completed successfully.
 5. Confirm `curl http://localhost/api/health` (or the instance's public
    address) returns `{"ok":true}`.
 
-Back up the database periodically with `scripts/backup.sh`, which
-`pg_dump`s the `db` service, gzips it into `backups/`, and keeps the last 7.
+Supabase provides managed backups in the dashboard. Optionally run
+`scripts/backup.sh` on the EC2 host (`pg_dump` via `DATABASE_URL`, gzip
+into `backups/`, keep the last 7).

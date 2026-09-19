@@ -43,12 +43,13 @@ the rubric constants and `src/agents/orchestrator/index.ts` for the loop.
 - `src/tools/` — `llm.ts` (model registry), `social/bluesky.ts` (publish)
 - `src/memory/context.ts` — loads the brand profile for agent prompts
 - `src/workflows/campaign-run.ts` — starts a campaign run in the background
-- `src/db/` — Drizzle schema (Postgres/pgTable), client, seed
+- `src/db/` — Drizzle schema (Postgres/pgTable), client, seed. Locked
+ design in `docs/DATABASE.md`.
 - `src/shared/` — `schemas.ts` (all zod schemas), `types.ts` (inferred
-  types), `brand-card.ts` (the text every agent prompt is built from)
+ types), `brand-card.ts` (the text every agent prompt is built from)
 - `src/env.ts` — zod-validated environment variables
-- `docker-compose.dev.yml` / `docker-compose.yml` / `Dockerfile` — local
-  Postgres and the production stack (Postgres + migrate + app) on EC2
+- `docker-compose.yml` / `Dockerfile` — production stack on EC2
+ (migrate against Supabase + app); database is Supabase Postgres
 
 ## Hard rules
 
@@ -61,9 +62,10 @@ the rubric constants and `src/agents/orchestrator/index.ts` for the loop.
 3. **All schemas live in `src/shared/schemas.ts`.** Don't redeclare a shape
    elsewhere — import the schema and infer types from `src/shared/types.ts`.
 4. **No new dependencies without asking.** The stack (Next.js, TypeScript,
-   Tailwind, shadcn/ui, Drizzle + Postgres, Vercel AI SDK, zod, @atproto/api,
-   Docker Compose) is intentionally fixed and free-tier. Ask before adding
-   anything else.
+ Tailwind, shadcn/ui, Drizzle + Supabase Postgres, Vercel AI SDK, zod,
+ @atproto/api, Docker Compose) is intentionally fixed and free-tier. Ask
+ before adding anything else. Do not add `@supabase/supabase-js` unless
+ we need Auth/Realtime/Storage — the DB is just Postgres via `DATABASE_URL`.
 5. **Small steps.** Ship one agent, one platform, or one schema at a time.
    Prefer a typed stub with a TODO over a half-finished implementation.
 6. **DB route handlers run on Node.js, never edge.** postgres.js needs raw
@@ -73,10 +75,11 @@ the rubric constants and `src/agents/orchestrator/index.ts` for the loop.
 ## Stack
 
 Next.js (App Router) + TypeScript (strict) + Tailwind + shadcn/ui; Drizzle
-ORM + drizzle-kit + `postgres` (postgres.js) on PostgreSQL 17; Vercel AI SDK
-(`ai`, `@ai-sdk/google` for the writer, `@ai-sdk/groq` for the critic); zod
-for every schema; `@atproto/api` for Bluesky publishing (later); Docker
-Compose on a single AWS EC2 instance for deployment. npm only.
+ORM + drizzle-kit + `postgres` (postgres.js) on Supabase Postgres; Vercel AI
+SDK (`ai`, `@ai-sdk/google` for the writer, `@ai-sdk/groq` for the critic);
+zod for every schema; `@atproto/api` for Bluesky publishing (later); Docker
+Compose on a single AWS EC2 instance for deployment (app + migrate; DB is
+hosted on Supabase). npm only.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

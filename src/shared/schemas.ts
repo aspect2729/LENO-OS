@@ -188,3 +188,13 @@ export const CritiqueSchema = CritiqueLLMSchema.extend({
   pass: z.boolean(),
 });
 
+/**
+ * What we persist on `drafts.critic_notes`. Keeps gate failures, the fix
+ * list, and the rationale together instead of flattening to a string[].
+ */
+export const CriticNotesSchema = z.object({
+  fix_list: z.array(z.string()),
+  gate_failures: z.array(z.string()),
+  rationale: z.string(),
+});
+
